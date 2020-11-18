@@ -589,10 +589,14 @@ void StartDefaultTask(void *argument)
 /* USER CODE END Header_StartTask02 */
 void StartTask02(void *argument)
 {
+	//-----------------------------------------------------------------
+	//------------------- TASK DRIVERS BUTTON--------------------------
+	//-----------------------------------------------------------------
+
 	/* USER CODE BEGIN StartTask02 */
 	/* Infinite loop */
-	char button_message[5] = "p1xd\n";
 
+	char button_message[5] = "p1xd\n";
 	for(;;)
 	{
 		if (left_arrow == TRUE || down_arrow == TRUE || right_arrow == TRUE){
@@ -623,12 +627,157 @@ void StartTask02(void *argument)
 /* USER CODE END Header_StartTask03 */
 void StartTask03(void *argument)
 {
+	//-----------------------------------------------------------------
+	//------------------- TASK DRIVERS LEDS--------------------------
+	//-----------------------------------------------------------------
+
 	/* USER CODE BEGIN StartTask03 */
 	/* Infinite loop */
-	for(;;)
-	{
-		osDelay(1);
+	//	for(;;)
+	//	{
+	//		osDelay(1);
+	//	}
+	#define	T0H 1
+	#define T1H 10
+	#define T0L 10
+	#define T1L	5
+
+
+	uint8_t ascii_to_int(char charachter){
+		uint8_t int_result;
+		if (charachter == '0'){
+			int_result = 0;
+		}
+		else if (charachter == '1'){
+			int_result = 1;
+		}
+		else if (charachter == '2'){
+			int_result = 2;
+		}
+		else if (charachter == '3'){
+			int_result = 3;
+		}
+		else if (charachter == '4'){
+			int_result = 4;
+		}
+		else if (charachter == '5'){
+			int_result = 5;
+		}
+		else if (charachter == '6'){
+			int_result = 6;
+		}
+		else if (charachter == '7'){
+			int_result = 7;
+		}
+		else if (charachter == '8'){
+			int_result = 8;
+		}
+		else if (charachter == '9'){
+			int_result = 9;
+		}
+		else if (charachter == 'A'){
+			int_result = 10;
+		}
+		else if (charachter == 'B'){
+			int_result = 11;
+		}
+		else if (charachter == 'C'){
+			int_result = 12;
+		}
+		else if (charachter == 'D'){
+			int_result = 13;
+		}
+		else if (charachter == 'E'){
+			int_result = 14;
+		}
+		else if (charachter == 'F'){
+			int_result = 15;
+		}
+		return int_result;
 	}
+
+	uint8_t assemble_2int(uint8_t int1, uint8_t int2){
+		uint8_t int_result = (int1*16)+int2;
+		return int_result;
+	}
+
+
+	int assemble_couleur(uint8_t red_value, uint8_t green_value, uint8_t blue_value){
+		int color_value = 0;
+		color_value = (green_value << 16 | red_value << 8 | blue_value);
+		return color_value;
+	}
+
+
+	void send_frame_with_int(int target_led, int color_values [64]){
+
+		HAL_GPIO_WritePin(LEDS_MODULE_GPIO_Port, LEDS_MODULE_Pin, 0);
+
+		for (int j = 0; j < target_led; j++){
+			int masque = 0x800000;
+			for (int i = 23; i >= 1 ; i --){
+				int high1 = T1H;
+				int low1 = T1L;
+				int high0 = T0H;
+				int low0 = T0L;
+				if (color_values[j] & masque){
+					HAL_GPIO_WritePin(LEDS_MODULE_GPIO_Port, LEDS_MODULE_Pin, 1);
+					while(high1--);
+					HAL_GPIO_WritePin(LEDS_MODULE_GPIO_Port, LEDS_MODULE_Pin, 0);
+					while(low1--);
+				}
+				else{
+					HAL_GPIO_WritePin(LEDS_MODULE_GPIO_Port, LEDS_MODULE_Pin, 1);
+					while(high0--);
+					HAL_GPIO_WritePin(LEDS_MODULE_GPIO_Port, LEDS_MODULE_Pin, 0);
+					while(low0--);
+				}
+				masque >>= 1;
+			}
+			HAL_GPIO_WritePin(LEDS_MODULE_GPIO_Port, LEDS_MODULE_Pin, 1);
+			HAL_GPIO_WritePin(LEDS_MODULE_GPIO_Port, LEDS_MODULE_Pin, 0);
+		}
+	}
+
+
+
+
+	//char received_frame [9] = "rxyFF1122";
+
+//	uint8_t g_value;
+//	uint8_t r_value;
+//	uint8_t b_value;
+//	r_value = assemble_2int(ascii_to_int(received_frame[3]), ascii_to_int(received_frame[4]));
+//	g_value = assemble_2int(ascii_to_int(received_frame[5]), ascii_to_int(received_frame[6]));
+//	b_value = assemble_2int(ascii_to_int(received_frame[7]), ascii_to_int(received_frame[8]));
+
+	//int color_value = assemble_couleur(r_value, g_value, b_value);
+
+	int color_values [64] = {16777215};
+
+	color_values[0] = assemble_couleur(250,250,250);
+	color_values[1] = assemble_couleur(250,250,250);
+	color_values[2] = assemble_couleur(250,250,250);
+	color_values[3] = assemble_couleur(250,250,250);
+	color_values[4] = assemble_couleur(250,250,250);
+	color_values[5] = assemble_couleur(250,250,250);
+	color_values[25] = assemble_couleur(100,200,0);
+	color_values[63] = assemble_couleur(200,200,0);
+
+
+	send_frame_with_int(63, color_values);
+
+
+
+
+
+
+
+
+
+
+
+
 	/* USER CODE END StartTask03 */
 }
 
