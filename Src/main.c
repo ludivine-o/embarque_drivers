@@ -24,7 +24,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "drivers_leds.h"
 
 /* USER CODE END Includes */
 
@@ -70,7 +70,7 @@ const osThreadAttr_t myTask02_attributes = {
 osThreadId_t myTask03Handle;
 const osThreadAttr_t myTask03_attributes = {
 		.name = "myTask03",
-		.priority = (osPriority_t) osPriorityNormal,
+		.priority = (osPriority_t) osPriorityHigh,
 		.stack_size = 128 * 4
 };
 /* Definitions for myTask04 */
@@ -194,7 +194,7 @@ int main(void)
 	UARTSendHandle = osMessageQueueNew (16, 5, &UARTSend_attributes);
 
 	/* creation of UARTReception */
-	UARTReceptionHandle = osMessageQueueNew (16, sizeof(uint16_t), &UARTReception_attributes);
+	UARTReceptionHandle = osMessageQueueNew (16, 10, &UARTReception_attributes);
 
 	/* USER CODE BEGIN RTOS_QUEUES */
 	/* add queues, ... */
@@ -211,7 +211,7 @@ int main(void)
 	myTask03Handle = osThreadNew(StartTask03, NULL, &myTask03_attributes);
 
 	/* creation of myTask04 */
-	myTask04Handle = osThreadNew(StartTask04, NULL, &myTask04_attributes);
+	//myTask04Handle = osThreadNew(StartTask04, NULL, &myTask04_attributes);
 
 	/* USER CODE BEGIN RTOS_THREADS */
 	/* add threads, ... */
@@ -571,9 +571,10 @@ void StartDefaultTask(void *argument)
 		if (osMessageQueueGetCount(UARTSendHandle)){
 			if(osMessageQueueGet(UARTSendHandle, UARTmessageToSend, 0, 10)==osOK){
 				HAL_UART_Transmit(&huart7, UARTmessageToSend, 5, 10);
+				osDelay(3);
 			}
 		}
-		if(HAL_UART_Receive(&huart7, UARTmessageReceived,5, 10)==HAL_OK){
+		if(HAL_UART_Receive(&huart7, UARTmessageReceived,10, 10)==HAL_OK){
 			osMessageQueuePut(UARTReceptionHandle, UARTmessageReceived, 1, 10);
 		}
 	}
@@ -596,7 +597,7 @@ void StartTask02(void *argument)
 	/* USER CODE BEGIN StartTask02 */
 	/* Infinite loop */
 
-	char button_message[5] = "p1xd\n";
+	char button_message[5] = "p3xd\n";
 	for(;;)
 	{
 		if (left_arrow == TRUE || down_arrow == TRUE || right_arrow == TRUE){
@@ -604,15 +605,16 @@ void StartTask02(void *argument)
 				button_message[2] ='l';
 				left_arrow = FALSE;
 			}
-			if (down_arrow == TRUE){
+			else if (down_arrow == TRUE){
 				button_message[2] ='d';
 				down_arrow = FALSE;
 			}
-			if(right_arrow == TRUE){
+			else if(right_arrow == TRUE){
 				button_message[2] ='r';
 				right_arrow = FALSE;
 			}
 			osMessageQueuePut(UARTSendHandle, button_message, 1, 10);
+
 		}
 	}
 	/* USER CODE END StartTask02 */
@@ -632,152 +634,17 @@ void StartTask03(void *argument)
 	//-----------------------------------------------------------------
 
 	/* USER CODE BEGIN StartTask03 */
+	char received_frame [SIZE_RECEIVED_FRAME];
 	/* Infinite loop */
-	//	for(;;)
-	//	{
-	//		osDelay(1);
-	//	}
-	#define	T0H 1
-	#define T1H 10
-	#define T0L 10
-	#define T1L	5
 
+	for(;;)
+	{
 
-	uint8_t ascii_to_int(char charachter){
-		uint8_t int_result;
-		if (charachter == '0'){
-			int_result = 0;
-		}
-		else if (charachter == '1'){
-			int_result = 1;
-		}
-		else if (charachter == '2'){
-			int_result = 2;
-		}
-		else if (charachter == '3'){
-			int_result = 3;
-		}
-		else if (charachter == '4'){
-			int_result = 4;
-		}
-		else if (charachter == '5'){
-			int_result = 5;
-		}
-		else if (charachter == '6'){
-			int_result = 6;
-		}
-		else if (charachter == '7'){
-			int_result = 7;
-		}
-		else if (charachter == '8'){
-			int_result = 8;
-		}
-		else if (charachter == '9'){
-			int_result = 9;
-		}
-		else if (charachter == 'A'){
-			int_result = 10;
-		}
-		else if (charachter == 'B'){
-			int_result = 11;
-		}
-		else if (charachter == 'C'){
-			int_result = 12;
-		}
-		else if (charachter == 'D'){
-			int_result = 13;
-		}
-		else if (charachter == 'E'){
-			int_result = 14;
-		}
-		else if (charachter == 'F'){
-			int_result = 15;
-		}
-		return int_result;
+		osMessageQueueGet(UARTReceptionHandle, received_frame, NULL, osWaitForever);
+		execute_led_msg_1D(received_frame);
+		osDelay(3);
+
 	}
-
-	uint8_t assemble_2int(uint8_t int1, uint8_t int2){
-		uint8_t int_result = (int1*16)+int2;
-		return int_result;
-	}
-
-
-	int assemble_couleur(uint8_t red_value, uint8_t green_value, uint8_t blue_value){
-		int color_value = 0;
-		color_value = (green_value << 16 | red_value << 8 | blue_value);
-		return color_value;
-	}
-
-
-	void send_frame_with_int(int target_led, int color_values [64]){
-
-		HAL_GPIO_WritePin(LEDS_MODULE_GPIO_Port, LEDS_MODULE_Pin, 0);
-
-		for (int j = 0; j < target_led; j++){
-			int masque = 0x800000;
-			for (int i = 23; i >= 1 ; i --){
-				int high1 = T1H;
-				int low1 = T1L;
-				int high0 = T0H;
-				int low0 = T0L;
-				if (color_values[j] & masque){
-					HAL_GPIO_WritePin(LEDS_MODULE_GPIO_Port, LEDS_MODULE_Pin, 1);
-					while(high1--);
-					HAL_GPIO_WritePin(LEDS_MODULE_GPIO_Port, LEDS_MODULE_Pin, 0);
-					while(low1--);
-				}
-				else{
-					HAL_GPIO_WritePin(LEDS_MODULE_GPIO_Port, LEDS_MODULE_Pin, 1);
-					while(high0--);
-					HAL_GPIO_WritePin(LEDS_MODULE_GPIO_Port, LEDS_MODULE_Pin, 0);
-					while(low0--);
-				}
-				masque >>= 1;
-			}
-			HAL_GPIO_WritePin(LEDS_MODULE_GPIO_Port, LEDS_MODULE_Pin, 1);
-			HAL_GPIO_WritePin(LEDS_MODULE_GPIO_Port, LEDS_MODULE_Pin, 0);
-		}
-	}
-
-
-
-
-	//char received_frame [9] = "rxyFF1122";
-
-//	uint8_t g_value;
-//	uint8_t r_value;
-//	uint8_t b_value;
-//	r_value = assemble_2int(ascii_to_int(received_frame[3]), ascii_to_int(received_frame[4]));
-//	g_value = assemble_2int(ascii_to_int(received_frame[5]), ascii_to_int(received_frame[6]));
-//	b_value = assemble_2int(ascii_to_int(received_frame[7]), ascii_to_int(received_frame[8]));
-
-	//int color_value = assemble_couleur(r_value, g_value, b_value);
-
-	int color_values [64] = {16777215};
-
-	color_values[0] = assemble_couleur(250,250,250);
-	color_values[1] = assemble_couleur(250,250,250);
-	color_values[2] = assemble_couleur(250,250,250);
-	color_values[3] = assemble_couleur(250,250,250);
-	color_values[4] = assemble_couleur(250,250,250);
-	color_values[5] = assemble_couleur(250,250,250);
-	color_values[25] = assemble_couleur(100,200,0);
-	color_values[63] = assemble_couleur(200,200,0);
-
-
-	send_frame_with_int(63, color_values);
-
-
-
-
-
-
-
-
-
-
-
-
 	/* USER CODE END StartTask03 */
 }
 
